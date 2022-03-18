@@ -1,0 +1,55 @@
+import { Modal } from 'antd';
+import { useRef, FC } from 'react';
+import { Prompt, history } from 'umi';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+
+//传入一个组件
+const { confirm } = Modal;
+export const WithPrompt = (WrappedCom: FC) => {
+  return function (props: any) {
+    //创建一个容器,记录状态
+    const quoteRef = useRef<number[]>([]);
+    //编辑状态下给容器加1
+    const editing = () => {
+      quoteRef.current.push(1);
+    };
+    //取消或者保存 删除一项
+    const unEditing = () => {
+      quoteRef.current.pop();
+    };
+    //弹出框的函数,需要结构confirm,参数是将要跳转的url
+    function showConfirm(url: string) {
+      confirm({
+        title: '文本内还有未编辑完成的内容是否继续离开',
+        icon: <ExclamationCircleOutlined />,
+        content: '离开后文本不会保存',
+        //按ok后跳转页面，但要先将数组长度变成0，否则无限弹提示
+        onOk() {
+          quoteRef.current = [];
+          history.push(url);
+        },
+        onCancel() {
+          return;
+        },
+      });
+    }
+
+    const leaveMessage = (location: any, action: string) => {
+      //如果数组里没有成员 可以跳转
+      if (quoteRef.current.length === 0) {
+        return true;
+      } else {
+        //弹出提示
+        showConfirm(location.pathname);
+        return false;
+      }
+    };
+
+    return (
+      <>
+        <Prompt message={leaveMessage}></Prompt>
+        <WrappedCom {...props} action={{ editing, unEditing }}></WrappedCom>
+      </>
+    );
+  };
+};
