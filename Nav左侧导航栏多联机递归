@@ -1,0 +1,16 @@
+//平常我们在做后台管理系统的时候在做左侧导航栏的时候，都是后端返回相应的数组，然后再渲染nav，考虑到有些nav存在多联级的情况下
+//如果我哦们单一的去判断有没有子项，会很麻烦这个时候我们可以考虑去使用递归的方法,在函数式组件里创建一个递归渲染函数，返回jsx
+const renderMenu = (arr: MenuItemType[] | ChildType[]) => {
+    return arr.map((item) => {
+      if (item.children) {
+        return (
+          <SubMenu key={+item.auth} title={item.title}>
+            {renderMenu(item.children)}
+          </SubMenu>
+        );
+      }
+      return <Menu.Item key={+item.auth}>{item.title}</Menu.Item>;
+    });
+  };
+  递归简单来说就是函数自身调用自身，但是，如果没有结束的条件 会造成死循环 ,所有一定要约定一个结束调节，比如在这里，如果没有子项了，函数就不会代用自身
+  递归的形成条件:1.函数自身调用自身，满足特定的规律 2.需要有一个结束的条件打破循环
