@@ -1,0 +1,77 @@
+在使用echarts的时候，会从后台请求数据，如果这个数据是实时更新的，那在前端组件中需要去实时更新数据
+那么我们应该采用哪种方式去更新数据，或者说是向后端'拿数据'呢??刚开始我想到了在组件里用定时器，用http轮询的方式,在组件
+定时向后端去请求最新的数据，这个方式存在一个问题，因为我们向后端发起请求是http请求，必须客户端发起请求
+服务端响应请求，如果数据没有更新，这样实际上是一次浪费的开销，因为什么内容也没有更新，而且在使用人数多的情况下
+会对服务器有不小的压力,然后我通过查阅，实际上有很多种实时更新数据的方式,还有流化技术,我选择了其中的一种Websocket长连接传输的方式
+websocket是基于http的双工协议,最大的特点是持久化的网络协议,服务器可以主动的推送信息，主要也是解决了 http不适用于实时通信的缺点
+websocket的有点是1建立在TCP连接之上 2.与http有良好的兼容性,默认端口也是80和443，在握手阶段采用的是http协议 ,实际上是升级了http协议,在连接的时候告诉服务端，我要用websoket连接
+数据格式可以是文本，也可以是二进制，没有同源策略，客户端可以和任意服务端通信，
+
+Server端:node-js
+安装 ws  websocket模块
+const Websocket = require('ws')
+获取构造函数 
+const WebsocketSever = Websocket.Server;
+创建服务器,8080端口
+const server = new WebsocketSever({
+    port:8080
+})
+设置测试数据
+const data = [30, 11, 20, 40, 50, 20, 20];
+const LowData = [1, -2, 2, 5, 3, 2, 0];
+通过监听连接,来主动发送信息
+server.on('connection',(socket)=>{
+    socket.send(JSON.stringify({data,LowData}));
+      socket.on('message',(msg)=>{
+        timer = setInterval(() => {
+            console.log(1);
+              data[0] += 5;
+              data[1] +=5;
+              data[3] -=3;
+              data[4] +=1;
+              data[5] +=2;
+              LowData[1] -=1;
+              LowData[2] +=1;
+              LowData[3] -=3;
+              LowData[4] +=3;
+              socket.send(JSON.stringify({data,LowData}));
+            }, 5000);
+        if(msg.toString() === 'close'){
+            // console.log(timer);
+            clearInterval(timer)
+        }
+    })
+})
+
+客户端 React:
+建立websocket对象
+ const websocket = new WebSocket('ws://127.0.0.1:8080');
+在useEffect阶段去建立连接 
+useEffect(() => {
+    websocket.onopen = () => {
+      console.log(websocket.readyState);
+      //0是没有建立
+      //1状态是客户端建立连接成功
+    };
+    return () => {
+      console.log('组件销毁了');
+      websocket.send('close');
+      websocket.close();
+    };
+  }, []);
+ 监听服务端发送过来的数据去重新设置echarts参数
+  websocket.onmessage = function ({ data }) {
+      console.log(JSON.parse(data).data);
+      if (data) {
+        myChart.setOption({
+          series: [
+            { name: 'Highest', data: JSON.parse(data).data, type: 'line' },
+            {
+              name: 'Lowest',
+              data: JSON.parse(data).LowData,
+            },
+          ],
+        });
+      }
+    };
+
